@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raagavi — Job Search Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #161620;
+    --border: #22222e;
+    --accent: #7c6af7;
+    --accent2: #f7a46a;
+    --accent3: #6af7c8;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --success: #4ade80;
+    --warn: #facc15;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Instrument Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hero {
+    position: relative;
+    padding: 60px 40px 40px;
+    background: linear-gradient(135deg, #0f0e1f 0%, #0a0a0f 60%);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(124,106,247,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .hero h1 span { color: var(--accent); font-style: italic; }
+  .hero p {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 560px;
+    line-height: 1.7;
+  }
+
+  .deadline-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 28px;
+    padding: 14px 20px;
+    background: rgba(247,164,106,0.07);
+    border: 1px solid rgba(247,164,106,0.2);
+    border-radius: 8px;
+    max-width: 600px;
+  }
+  .deadline-bar .label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .progress-wrap { flex: 1; }
+  .progress-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 2px;
+    animation: fillAnim 1.5s ease forwards;
+    width: 0%;
+  }
+  @keyframes fillAnim { to { width: 72%; } }
+  .days-left {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    white-space: nowrap;
+  }
+
+  .main { padding: 40px; display: grid; gap: 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* Section headers */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .section-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text);
+  }
+  .section-header .pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: rgba(124,106,247,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(124,106,247,0.2);
+  }
+
+  /* Profile snapshot */
+  .snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .snap-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .snap-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .snap-card .snap-icon { font-size: 20px; margin-bottom: 10px; }
+  .snap-card .snap-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .snap-card .snap-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .snap-card .snap-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Target roles */
+  .roles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .role-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .role-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .role-card.primary::before {
+    content: 'BEST FIT';
+    position: absolute;
+    top: 12px; right: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--accent3);
+    background: rgba(106,247,200,0.08);
+    border: 1px solid rgba(106,247,200,0.2);
+    padding: 3px 7px;
+    border-radius: 20px;
+  }
+  .role-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .role-why {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .role-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: rgba(124,106,247,0.08);
+    color: var(--accent);
+    border: 1px solid rgba(124,106,247,0.15);
+  }
+  .tag.green { background: rgba(106,247,200,0.08); color: var(--accent3); border-color: rgba(106,247,200,0.15); }
+  .tag.orange { background: rgba(247,164,106,0.08); color: var(--accent2); border-color: rgba(247,164,106,0.15); }
+
+  /* Company targets */
+  .companies-table { width: 100%; border-collapse: collapse; }
+  .companies-table thead th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .companies-table tbody tr {
+    border-bottom: 1px solid rgba(34,34,46,0.5);
+    transition: background 0.15s;
+  }
+  .companies-table tbody tr:hover { background: rgba(124,106,247,0.04); }
+  .companies-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+  .co-name { font-weight: 600; color: var(--text); }
+  .co-role { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .fit-bar {
+    width: 80px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .fit-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent3)); }
+  .priority-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .p-high { background: #f87171; }
+  .p-med { background: var(--warn); }
+  .p-low { background: var(--success); }
+
+  /* Outreach templates */
+  .templates-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .template-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .template-type {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 12px;
+  }
+  .template-subject {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .template-body {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.8;
+    white-space: pre-line;
+  }
+  .template-body .highlight { color: var(--accent); font-weight: 500; }
+  .copy-btn {
+    margin-top: 16px;
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 7px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Weekly plan */
+  .week-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .day-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .day-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .day-task {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 6px;
+    padding-left: 12px;
+    border-left: 2px solid var(--border);
+  }
+  .day-task.active { border-color: var(--accent); color: var(--text); }
+
+  /* Tracker */
+  .tracker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .tracker-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .tracker-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    color: var(--accent);
+    line-height: 1;
+    min-width: 60px;
+  }
+  .tracker-label { font-size: 13px; color: var(--text); font-weight: 500; }
+  .tracker-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Checklist */
+  .checklist { display: grid; gap: 8px; }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .check-item:hover { border-color: rgba(124,106,247,0.3); }
+  .check-item.done { opacity: 0.5; }
+  .check-box {
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    font-size: 11px;
+  }
+  .check-item.done .check-box { background: var(--accent); border-color: var(--accent); }
+  .check-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+  .check-item.done .check-text { text-decoration: line-through; color: var(--muted); }
+  .check-category {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  footer {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 600px) {
+    .hero { padding: 40px 20px 30px; }
+    .main { padding: 24px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-tag">⚡ Job Search Command Center</div>
+  <h1>Raagavi's<br><span>Strategic</span> Job Hunt</h1>
+  <p>Applied AI × Backend × Systems. Here's your complete targeting system — companies, roles, outreach scripts, and a weekly rhythm. Stop guessing, start executing.</p>
+  <div class="deadline-bar">
+    <span class="label">⏱ Graduation Countdown</span>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Snapshot -->
+  <section>
+    <div class="section-header">
+      <h2>Your Competitive Edge</h2>
+      <span class="pill">Profile Audit</span>
+    </div>
+    <div class="snapshot-grid">
+      <div class="snap-card">
+        <div class="snap-icon">🎓</div>
+        <div class="snap-label">CGPA</div>
+        <div class="snap-value">9.59 / 10</div>
+        <div class="snap-sub">Top ~5% — lead with this</div>
+      </div>
+      <div class="snap-card">
+        <div class="snap-icon">🤖</div>
+        <div class="snap-label">Production AI Exposure</div>
+        <div class="snap-value">5,000+ LLM evals</div>
+        <div class="snap-sub">Real RLHF + fine-tuning context</div>
+      </div>
+      <div class="snap-card">
+        <div class="snap-icon">🏆</div>
+        <div class="snap-label">Hackathon</div>
+        <div class="snap-value">JPMorgan Code for Good</div>
+        <div class="snap-sub">National-level winner</div>
+      </div>
+      <div class="snap-card">
+        <div class="snap-icon">🔧</div>
+        <div class="snap-label">Stack</div>
+        <div class="snap-value">AI + Backend + Analytics</div>
+        <div class="snap-sub">Full stack ownership</div>
+      </div>
+      <div class="snap-card">
+        <div class="snap-icon">🌐</div>
+        <div class="snap-label">Community</div>
+        <div class="snap-value">1500+ member GDSC lead</div>
+        <div class="snap-sub">Signals leadership + comms</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Target Roles -->
+  <section>
+    <div class="section-header">
+      <h2>Roles to Target</h2>
+      <span class="pill">Prioritized</span>
+    </div>
+    <div class="roles-grid">
+      <div class="role-card primary">
+        <div class="role-title">AI/ML Engineer (SDE)</div>
+        <div class="role-why">Your Deccan AI work — LLM evaluation, RLHF pipelines, hallucination detection — is literally the job description for AI SDE roles at product companies. Lead with this.</div>
+        <div class="role-tags">
+          <span class="tag green">Best Narrative</span>
+          <span class="tag">LLM systems</span>
+          <span class="tag">Python</span>
+          <span class="tag">Fine-tuning</span>
+        </div>
+      </div>
+      <div class="role-card primary">
+        <div class="role-title">Backend / SDE – II Ready</div>
+        <div class="role-why">Django + PostgreSQL at NGO (50% perf gain), Node + Redux + serverless at RecruitAI. You've built at scale. Backend SDE roles at funded startups are the sweet spot.</div>
+        <div class="role-tags">
+          <span class="tag green">Strong Portfolio</span>
+          <span class="tag">Node.js</span>
+          <span class="tag">REST APIs</span>
+          <span class="tag">PostgreSQL</span>
+        </div>
+      </div>
+      <div class="role-card">
+        <div class="role-title">Data Scientist / Analyst</div>
+        <div class="role-why">FinLit platform, analytics work, and structured LLM feedback labeling shows you understand data at a systems level — not just dashboards. Analytics-heavy SaaS companies are a fit.</div>
+        <div class="role-tags">
+          <span class="tag">ML pipelines</span>
+          <span class="tag">Tableau</span>
+          <span class="tag orange">Backup Route</span>
+        </div>
+      </div>
+      <div class="role-card">
+        <div class="role-title">AI Product / PM (Technical)</div>
+        <div class="role-why">Your GDSC ops leadership + product awareness (RecruitAI UX, campaign analytics in CRM) makes you interesting for APM/technical PM tracks at AI-first companies.</div>
+        <div class="role-tags">
+          <span class="tag">Systems thinking</span>
+          <span class="tag">Leadership</span>
+          <span class="tag orange">Differentiated bet</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Company Hit List -->
+  <section>
+    <div class="section-header">
+      <h2>Company Hit List</h2>
+      <span class="pill">30 Targets — Apply in waves</span>
+    </div>
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+      <table class="companies-table">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Why You Fit</th>
+            <th>Priority</th>
+            <th>Fit</th>
+          </tr>
+        </thead>
+        <tbody id="companyTable">
+          <!-- Wave 1 — High Priority AI Startups -->
+          <tr>
+            <td><div class="co-name">Sarvam AI</div><div class="co-role">AI SDE / Research Engineer</div></td>
+            <td style="font-size:13px;color:var(--muted)">Indian LLM lab — your RLHF eval work is exactly what they need. Direct overlap.</td>
+            <td><span class="priority-dot p-high"></span><span style="font-size:13px">High</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:95%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Krutrim (Ola AI)</div><div class="co-role">ML Engineer</div></td>
+            <td style="font-size:13px;color:var(--muted)">Building India's AI stack. LLM evaluation + production experience is a match.</td>
+            <td><span class="priority-dot p-high"></span><span style="font-size:13px">High</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:92%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Sprinklr</div><div class="co-role">SDE – Backend / AI</div></td>
+            <td style="font-size:13px;color:var(--muted)">CRM + AI platform — your Mini CRM project is essentially a demo for them.</td>
+            <td><span class="priority-dot p-high"></span><span style="font-size:13px">High</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:90%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Postman</div><div class="co-role">Backend SDE</div></td>
+            <td style="font-size:13px;color:var(--muted)">Chennai-based. Strong backend focus. API-first culture fits your skill set well.</td>
+            <td><span class="priority-dot p-high"></span><span style="font-size:13px">High</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:88%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Freshworks</div><div class="co-role">SDE / AI Feature Eng</div></td>
+            <td style="font-size:13px;color:var(--muted)">Chennai HQ, product-led, SaaS CRM. CRM project + CGPA makes you a strong fresher candidate.</td>
+            <td><span class="priority-dot p-high"></span><span style="font-size:13px">High</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:87%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Zoho</div><div class="co-role">Software Engineer</div></td>
+            <td style="font-size:13px;color:var(--muted)">Chennai base, high quality engineering culture. Stable, learning-heavy first role if startup offers don't come fast.</td>
+            <td><span class="priority-dot p-med"></span><span style="font-size:13px">Medium</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:82%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">HashedIn (Deloitte)</div><div class="co-role">Backend / Data Engineer</div></td>
+            <td style="font-size:13px;color:var(--muted)">Product-aligned consulting. Great for breadth if you want exposure across industries early.</td>
+            <td><span class="priority-dot p-med"></span><span style="font-size:13px">Medium</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:78%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Glean</div><div class="co-role">ML Engineer (Bengaluru)</div></td>
+            <td style="font-size:13px;color:var(--muted)">Enterprise AI search. RAG + NLP experience from your profile is relevant.</td>
+            <td><span class="priority-dot p-high"></span><span style="font-size:13px">High</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:85%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Razorpay</div><div class="co-role">SDE – Platform</div></td>
+            <td style="font-size:13px;color:var(--muted)">Fintech + backend systems. FinLit project shows finance domain interest + data pipeline skills.</td>
+            <td><span class="priority-dot p-med"></span><span style="font-size:13px">Medium</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:79%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Unacademy / Physics Wallah</div><div class="co-role">AI Engineer</div></td>
+            <td style="font-size:13px;color:var(--muted)">EdTech + AI is a growing segment. RecruitAI shows interview-tech product thinking.</td>
+            <td><span class="priority-dot p-med"></span><span style="font-size:13px">Medium</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:75%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Google (STEP / APM)</div><div class="co-role">APM / SWE Fresher</div></td>
+            <td style="font-size:13px;color:var(--muted)">Long shot but worth applying. CGPA + GDSC leadership + JPMorgan win is a strong signal.</td>
+            <td><span class="priority-dot p-low"></span><span style="font-size:13px">Stretch</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:60%"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="co-name">Microsoft (India)</div><div class="co-role">SDE – AI Platform</div></td>
+            <td style="font-size:13px;color:var(--muted)">Azure AI teams. Your LLM eval + backend skills match SDE-1 in AI product groups.</td>
+            <td><span class="priority-dot p-low"></span><span style="font-size:13px">Stretch</span></td>
+            <td><div class="fit-bar"><div class="fit-fill" style="width:62%"></div></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Outreach Templates -->
+  <section>
+    <div class="section-header">
+      <h2>Personalized Outreach Templates</h2>
+      <span class="pill">Copy → Personalize → Send</span>
+    </div>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:20px;line-height:1.7;">Replace <span style="color:var(--accent)">[brackets]</span> with specifics. Personalization = the difference between 5% and 40% reply rates. Always LinkedIn DM <em>before</em> applying.</p>
+    <div class="templates-grid">
+      <div class="template-card">
+        <div class="template-type">LinkedIn DM — AI Startup</div>
+        <div class="template-subject">Hi [Name] — quick message from a SRMIST final-year</div>
+        <div class="template-body">Hi [Name],
+
+I've been following [Company]'s work on [specific product/model] — the [specific thing you find interesting] is fascinating.
+
+I'm a final-year CSE student at SRMIST (9.59 CGPA) currently interning at Deccan AI where I evaluate 5,000+ LLM outputs for Google Fitbit-style health insights — structuring feedback for RLHF fine-tuning cycles. I also built a full-stack CRM and an AI interview assistant.
+
+I noticed [Company] is expanding the [team name] — would love 15 minutes to learn about what problems the team is working on, and share what I've built.
+
+Would that be okay?
+
+Raagavi</div>
+        <button class="copy-btn" onclick="copyText(this)">Copy Template</button>
+      </div>
+      <div class="template-card">
+        <div class="template-type">Cold Email — Backend SaaS Role</div>
+        <div class="template-subject">Final-year SDE fresher — CGPA 9.59, JPMorgan Code for Good winner</div>
+        <div class="template-body">Hi [Name],
+
+I'm reaching out because [Company]'s engineering blog post on [specific post/topic] resonated deeply — especially the emphasis on [specific point].
+
+Quick background: I'm a final-year CS student at SRMIST graduating in May 2026. I've built backend systems with Django/Node, worked with PostgreSQL at scale, and spent the last 3 months evaluating LLM outputs at Deccan AI — structuring feedback that improved model quality by 25%.
+
+I won JPMorgan Chase Code for Good 2025 and led a 1500-member developer community. I'd love to contribute to [specific team at Company].
+
+I've attached my resume — would it be alright to connect for a brief call?
+
+Best,
+Raagavi G
+Raagavi2105@gmail.com | LinkedIn | Portfolio</div>
+        <button class="copy-btn" onclick="copyText(this)">Copy Template</button>
+      </div>
+      <div class="template-card">
+        <div class="template-type">Referral Ask — LinkedIn (Warm)</div>
+        <div class="template-subject">Referral request for [Company] — SRMIST CSE, May 2026</div>
+        <div class="template-body">Hi [Name],
+
+Hope you're doing well! I came across your profile while researching [Company] — your background in [their work] is really impressive.
+
+I'm a final-year CS student at SRMIST (CGPA 9.59) actively looking for SDE / AI engineer roles. I currently intern at Deccan AI working on LLM evaluation and RLHF pipelines, and I've won JPMorgan's Code for Good 2025.
+
+I noticed [Company] has an opening for [Role] — if you'd be comfortable referring me, I'd really appreciate it. Happy to share my resume and portfolio.
+
+No worries at all if this isn't something you're able to do!
+
+Thanks so much,
+Raagavi</div>
+        <button class="copy-btn" onclick="copyText(this)">Copy Template</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Weekly Rhythm -->
+  <section>
+    <div class="section-header">
+      <h2>Weekly Job Search Rhythm</h2>
+      <span class="pill">Sustainable System</span>
+    </div>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:20px">Don't spray-and-pray. 5 targeted applications/week beats 50 generic ones. This rhythm keeps stress low.</p>
+    <div class="week-grid">
+      <div class="day-card">
+        <div class="day-name">Monday</div>
+        <div class="day-task active">Research 5 new companies. Note specific team/project.</div>
+        <div class="day-task">Update application tracker.</div>
+      </div>
+      <div class="day-card">
+        <div class="day-name">Tuesday</div>
+        <div class="day-task active">Send 3 LinkedIn DMs to hiring managers / leads at target companies.</div>
+      </div>
+      <div class="day-card">
+        <div class="day-name">Wednesday</div>
+        <div class="day-task active">Apply to 3–5 roles (tailored resume version).</div>
+        <div class="day-task">DSA practice: 2 medium Leetcode problems.</div>
+      </div>
+      <div class="day-card">
+        <div class="day-name">Thursday</div>
+        <div class="day-task active">Follow up on DMs sent Tuesday (if no reply).</div>
+        <div class="day-task">Post 1 LinkedIn update: project insight, learning, or build update.</div>
+      </div>
+      <div class="day-card">
+        <div class="day-name">Friday</div>
+        <div class="day-task active">Review the week. What worked? Update tracker status.</div>
+        <div class="day-task">1 mock interview (Pramp / Interviewing.io).</div>
+      </div>
+      <div class="day-card">
+        <div class="day-name">Weekend</div>
+        <div class="day-task">Build or polish a project artifact (GitHub README, demo video).</div>
+        <div class="day-task active">REST. Burnout ends job searches.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Weekly Tracker Goals -->
+  <section>
+    <div class="section-header">
+      <h2>Weekly KPIs</h2>
+      <span class="pill">Measure What Matters</span>
+    </div>
+    <div class="tracker-grid">
+      <div class="tracker-item">
+        <div class="tracker-num">5</div>
+        <div><div class="tracker-label">Applications / week</div><div class="tracker-sub">Targeted, not copy-pasted</div></div>
+      </div>
+      <div class="tracker-item">
+        <div class="tracker-num">3</div>
+        <div><div class="tracker-label">LinkedIn DMs / week</div><div class="tracker-sub">To hiring managers + leads</div></div>
+      </div>
+      <div class="tracker-item">
+        <div class="tracker-num">1</div>
+        <div><div class="tracker-label">LinkedIn post / week</div><div class="tracker-sub">Share what you're building/learning</div></div>
+      </div>
+      <div class="tracker-item">
+        <div class="tracker-num">2</div>
+        <div><div class="tracker-label">Leetcode mediums / week</div><div class="tracker-sub">Arrays, DP, graphs — interview prep</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pre-Apply Checklist -->
+  <section>
+    <div class="section-header">
+      <h2>Pre-Launch Checklist</h2>
+      <span class="pill">Do These First</span>
+    </div>
+    <div class="checklist" id="checklist">
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Add quantified impact to every bullet in resume (you have some, make sure ALL bullets have numbers)</div><div class="check-category">Resume</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Create a "AI/ML Engineer" resume variant and a "Backend SDE" variant — tailor keywords to job descriptions</div><div class="check-category">Resume</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Add a 2-line summary at top of LinkedIn profile: "Final-year CS student | LLM Evaluation + Backend | JPMorgan Code for Good winner | Open to SDE / AI roles from May 2026"</div><div class="check-category">LinkedIn</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Turn on LinkedIn "Open to Work" — visible to recruiters only</div><div class="check-category">LinkedIn</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Add GitHub READMEs with screenshots + live links to all 3 main projects (RecruitAI, CRM, FinLit)</div><div class="check-category">GitHub</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Record a 2-min Loom demo of RecruitAI — link it in LinkedIn posts and DMs (massive differentiator)</div><div class="check-category">Portfolio</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Set up a simple Notion or spreadsheet to track: Company, Role, Date Applied, Status, Next Step</div><div class="check-category">Process</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Ask your Deccan AI manager for a LinkedIn recommendation or referral letter — do this now while you're still there</div><div class="check-category">Network</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">Start Leetcode — aim for 50 mediums before interviews. Focus: Arrays, Sliding Window, Trees, DP basics</div><div class="check-category">Interview Prep</div></div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div><div class="check-text">DM 5 alumni from SRMIST who work at your target companies and ask for a 15-min coffee chat</div><div class="check-category">Network</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mindset note -->
+  <section>
+    <div style="background:linear-gradient(135deg, rgba(124,106,247,0.06), rgba(106,247,200,0.04)); border:1px solid rgba(124,106,247,0.15); border-radius:12px; padding:30px;">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">A NOTE ON STRESS</div>
+      <p style="font-family:'DM Serif Display',serif;font-size:20px;line-height:1.6;color:var(--text);margin-bottom:14px;">"You're not lacking skill. You're at the stage where narrative, focus, and strategic targeting will determine how fast you land."</p>
+      <p style="font-size:14px;color:var(--muted);line-height:1.8;">Most job search stress comes from <strong style="color:var(--text)">randomness</strong> — applying everywhere hoping something sticks. This system removes the randomness. 5 targeted applications with personalized outreach will outperform 50 mass applications every single time. Trust the system, track your numbers, and give yourself credit for already being ahead of 90% of your peers. You have real production AI experience at intern level. That is rare.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>Made for Raagavi G · May 2026 target · Built with Claude</footer>
+
+<script>
+function toggleCheck(el) {
+  el.classList.toggle('done');
+  if (el.classList.contains('done')) {
+    el.querySelector('.check-box').textContent = '✓';
+  } else {
+    el.querySelector('.check-box').textContent = '';
+  }
+}
+
+function copyText(btn) {
+  const card = btn.closest('.template-card');
+  const body = card.querySelector('.template-body').textContent;
+  const subject = card.querySelector('.template-subject').textContent;
+  navigator.clipboard.writeText(subject + '\n\n' + body).then(() => {
+    btn.textContent = '✓ Copied!';
+    btn.style.borderColor = 'var(--accent3)';
+    btn.style.color = 'var(--accent3)';
+    setTimeout(() => {
+      btn.textContent = 'Copy Template';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2000);
+  });
+}
+</script>
+</body>
+</html>
